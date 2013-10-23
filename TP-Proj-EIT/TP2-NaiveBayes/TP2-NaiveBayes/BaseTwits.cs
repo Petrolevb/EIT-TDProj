@@ -17,15 +17,17 @@ namespace TP1_Chargement
             this.m_AllWords = new Dictionary<string, double>();
         }
 
-        public void AddTwit(string contenu)
+        public bool AddTwit(string contenu)
         {
             Twit t = new Twit(contenu);
-            this.AddTwit(t);
+            return this.AddTwit(t);
         }
 
-        public void AddTwit(Twit t)
+        public bool AddTwit(Twit t)
         {
+            if (this.m_Twits.Contains(t)) return false;
             this.m_Twits.Add(t);
+            return true;
         }
 
         public string checkTwit(string contenu)
@@ -35,6 +37,13 @@ namespace TP1_Chargement
         {
             if (this.m_Twits.Contains(t))
                 return "skipped";
+            double[] numberInCategories = 
+            {
+                this.GetByCategory("positive").ToArray().Length,
+                this.GetByCategory("negative").ToArray().Length,
+                this.GetByCategory("neutral").ToArray().Length,
+                this.GetByCategory("irrelevant").ToArray().Length
+            };
             double probaPositive = 0,
                    probaNegative = 0,
                    probaNeutral = 0,
@@ -42,22 +51,16 @@ namespace TP1_Chargement
 
             foreach (string word in this.m_AllWords.Keys)
             {
-                
-                probaPositive += t.IsWordIn(word)   ? Math.Log(this.m_BetasPositive[word])  : Math.Log(1-this.m_BetasPositive[word]);
-                probaNegative += t.IsWordIn(word)   ? Math.Log(this.m_BetasNegative[word])  : Math.Log(1-this.m_BetasNegative[word]);
-                probaNeutral += t.IsWordIn(word)    ? Math.Log(this.m_BetasNeutral[word])   : Math.Log(1-this.m_BetasNeutral[word]);
-                probaIrrelevant += t.IsWordIn(word) ? Math.Log(this.m_BetasIrrelevant[word]) : Math.Log(1-this.m_BetasIrrelevant[word]);
+                probaPositive += t.IsWordIn(word) ? 
+                    Math.Log(this.m_BetasPositive[word]) : Math.Log(1 - this.m_BetasPositive[word]);
+                probaNegative += t.IsWordIn(word) ?
+                    Math.Log(this.m_BetasNegative[word]) : Math.Log(1-this.m_BetasNegative[word]);
+                probaNeutral += t.IsWordIn(word) ?
+                    Math.Log(this.m_BetasNeutral[word]) : Math.Log(1-this.m_BetasNeutral[word]);
+                probaIrrelevant += t.IsWordIn(word) ?
+                    Math.Log(this.m_BetasIrrelevant[word]) : Math.Log(1-this.m_BetasIrrelevant[word]);
             }
-            /*
-            probaPositive = Math.Exp(probaPositive) *
-                this.GetByCategory("positive").ToArray().Length / this.m_Twits.Count;
-            probaNegative = Math.Exp(probaNegative) 
-                * this.GetByCategory("negative").ToArray().Length / this.m_Twits.Count;
-            probaNeutral = Math.Exp(probaNeutral)*
-                this.GetByCategory("neutral").ToArray().Length / this.m_Twits.Count;
-            probaIrrelevant = Math.Exp(probaIrrelevant)*
-                this.GetByCategory("irrelevant").ToArray().Length / this.m_Twits.Count;
-            //*/
+
             if (probaPositive > probaNegative && probaPositive > probaNeutral && probaPositive > probaIrrelevant)
                 return "positive and was " + t.Categorie + " : " + (t.Categorie.ToString().ToLower().Equals("positive")).ToString();
 
@@ -74,7 +77,7 @@ namespace TP1_Chargement
         public void InitBase()
         {
             double[] numberInCategories = 
-            { 
+            {
                 this.GetByCategory("positive").ToArray().Length,
                 this.GetByCategory("negative").ToArray().Length,
                 this.GetByCategory("neutral").ToArray().Length,
@@ -83,21 +86,57 @@ namespace TP1_Chargement
             foreach (Twit t in this.m_Twits)
                 foreach(string word in t.Words)
                 {
-                    #region Add the word if not in betas
-                    if (!this.m_BetasPositive.ContainsKey(word)) this.m_BetasPositive.Add(word, 1.0);
-                    if (!this.m_BetasNegative.ContainsKey(word)) this.m_BetasNegative.Add(word, 1.0);
-                    if (!this.m_BetasNeutral.ContainsKey(word)) this.m_BetasNeutral.Add(word, 1.0);
-                    if (!this.m_BetasIrrelevant.ContainsKey(word)) this.m_BetasIrrelevant.Add(word, 1.0);
-                    #endregion
+                    if (!this.m_BetasPositive.ContainsKey(word))
+                        this.m_BetasPositive.Add(word, 0);
+                    if (!this.m_BetasNegative.ContainsKey(word)) 
+                        this.m_BetasNegative.Add(word, 0);
+                    if (!this.m_BetasNeutral.ContainsKey(word)) 
+                        this.m_BetasNeutral.Add(word, 0);
+                    if (!this.m_BetasIrrelevant.ContainsKey(word)) 
+                        this.m_BetasIrrelevant.Add(word, 0);
 
-                    this.m_BetasPositive[word]   *= t.IsWordIn(word) ? 1/numberInCategories[0] : 1.0;
-                    this.m_BetasNegative[word]   *= t.IsWordIn(word) ? 1/numberInCategories[1] : 1.0;
-                    this.m_BetasNeutral[word]    *= t.IsWordIn(word) ? 1/numberInCategories[2] : 1.0;
-                    this.m_BetasIrrelevant[word] *= t.IsWordIn(word) ? 1/numberInCategories[3] : 1.0;
+                    switch (t.Categorie)
+                    {
+                        case "positive":  this.m_BetasPositive[word]++; break;
+                        case "negative":   this.m_BetasNegative[word]++; break;
+                        case "neutral":    this.m_BetasNeutral[word]++; break;
+                        case "irrelevant": this.m_BetasIrrelevant[word]++; break;
+                    }
 
                     if(!this.m_AllWords.ContainsKey(word)) this.m_AllWords.Add(word, 0);
                     this.m_AllWords[word] += t.NumberWordIn(word);
                 }
+            foreach (string key in this.m_AllWords.Keys)
+            {
+                if (this.m_BetasPositive.ContainsKey(key))
+                    this.m_BetasPositive[key] = 
+                        Math.Min(Math.Max(0.1,
+                                          this.m_BetasPositive[key]), 
+                                 numberInCategories[0]-0.1) 
+                        / numberInCategories[0];
+                double testP = this.m_BetasPositive[key];
+                if (this.m_BetasNegative.ContainsKey(key))
+                    this.m_BetasNegative[key] =
+                        Math.Min(Math.Max(0.1,
+                                          this.m_BetasNegative[key]),
+                                 numberInCategories[1] - 0.1)
+                        / numberInCategories[1];
+                double testNg = this.m_BetasNegative[key];
+                if (this.m_BetasNeutral.ContainsKey(key))
+                    this.m_BetasNeutral[key] =
+                        Math.Min(Math.Max(0.1,
+                                          this.m_BetasNeutral[key]),
+                                 numberInCategories[2] - 0.1)
+                        / numberInCategories[2];
+                double testNt = this.m_BetasNeutral[key];
+                if (this.m_BetasIrrelevant.ContainsKey(key))
+                    this.m_BetasIrrelevant[key] =
+                        Math.Min(Math.Max(0.1,
+                                          this.m_BetasIrrelevant[key]),
+                                 numberInCategories[3] - 0.1)
+                        / numberInCategories[3];
+                double testI = this.m_BetasIrrelevant[key];
+            }
         }
 
         private List<Twit> m_Twits;

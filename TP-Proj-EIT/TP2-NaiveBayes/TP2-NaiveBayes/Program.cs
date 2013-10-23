@@ -30,8 +30,13 @@ namespace TP1_Chargement
             if (sTaille.Equals("QUIT")) return;
             if (!Int32.TryParse(sTaille, out taille))
             { Console.WriteLine("Not a Number"); Console.Read(); return; }
+
             for (int i = 0; i < taille; i++)
-                baseTwits.AddTwit(twits[RNG.Next(0, twits.Count - 1)]);
+            {
+                string selected = twits[RNG.Next(0, twits.Count - 1)];
+                twits.Remove(selected);
+                baseTwits.AddTwit(selected);
+            }
             baseTwits.InitBase();
             string prompt = "";
             while (prompt != "QUIT")
